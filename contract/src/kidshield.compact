@@ -1,0 +1,263 @@
+// KidShield Smart Contract - Midnight Network
+// Proteção de Crianças Online com Zero Knowledge Proofs
+
+// ==========================================
+// TIPOS DE DADOS
+// ==========================================
+
+// Registro de criança
+export type ChildRecord = {
+  childId: Bytes<32>,
+  ageProofHash: Bytes<32>,
+  parentId: Bytes<32>,
+  registrationTimestamp: Uint64,
+  isActive: Boolean
+};
+
+// Resultado de verificação
+export type VerificationResult = {
+  isVerified: Boolean,
+  ageRange: Uint8,
+  timestamp: Uint64
+};
+
+// Incidente reportado
+export type ThreatReport = {
+  reportId: Bytes<32>,
+  victimId: Bytes<32>,
+  suspectId: Bytes<32>,
+  threatLevel: Uint8,
+  platformId: Bytes<16>,
+  timestamp: Uint64
+};
+
+// ==========================================
+// ESTADO PÚBLICO (Ledger)
+// ==========================================
+
+export ledger State {
+  totalChildrenRegistered: Uint64,
+  totalVerifications: Uint64,
+  totalThreatsBlocked: Uint64,
+  contractActive: Boolean
+};
+
+// ==========================================
+// CIRCUITO 1: REGISTRAR CRIANÇA
+// ==========================================
+
+export circuit registerChild(
+  public parentId: Bytes<32>,
+  private childBirthYear: Uint16,
+  private childName: Bytes<64>
+): ChildRecord {
+  
+  // Validar ano de nascimento (criança deve ter entre 5-17 anos)
+  const currentYear: Uint16 = 2024;
+  const minYear: Uint16 = 2007;  // 17 anos
+  const maxYear: Uint16 = 2019;  // 5 anos
+  
+  // Verificar se é criança
+  if (childBirthYear < minYear || childBirthYear > maxYear) {
+    // Retornar registro inválido
+    return createInvalidRecord();
+  }
+  
+  // Gerar ID único da criança (hash do parentId + childName + timestamp)
+  const timestamp = getCurrentTimestamp();
+  const childId = hashData(parentId, childName, timestamp);
+  
+  // Criar prova de idade (ZK Proof)
+  // Provamos que a criança tem X anos SEM revelar data exata
+  const age = currentYear - childBirthYear;
+  const ageProofHash = createAgeProof(age);
+  
+  // Atualizar contador no ledger
+  State.totalChildrenRegistered = State.totalChildrenRegistered + 1;
+  
+  // Ativar contrato se for primeira criança
+  if (State.totalChildrenRegistered == 1) {
+    State.contractActive = true;
+  }
+  
+  // Criar e retornar registro
+  return {
+    childId: childId,
+    ageProofHash: ageProofHash,
+    parentId: parentId,
+    registrationTimestamp: timestamp,
+    isActive: true
+  };
+}
+
+// ==========================================
+// CIRCUITO 2: VERIFICAR CRIANÇA
+// ==========================================
+
+export circuit verifyChild(
+  public childId: Bytes<32>,
+  public platformId: Bytes<16>
+): VerificationResult {
+  
+  // Verificar se contrato está ativo
+  if (!State.contractActive) {
+    return createFailedVerification();
+  }
+  
+  // Buscar registro da criança (simplificado)
+  const exists = checkChildExists(childId);
+  
+  if (!exists) {
+    return createFailedVerification();
+  }
+  
+  // Obter faixa etária sem revelar idade exata
+  const ageRange = getAgeRange(childId);
+  
+  // Incrementar contador
+  State.totalVerifications = State.totalVerifications + 1;
+  
+  // Registrar verificação (para analytics)
+  logVerification(childId, platformId);
+  
+  return {
+    isVerified: true,
+    ageRange: ageRange,
+    timestamp: getCurrentTimestamp()
+  };
+}
+
+// ==========================================
+// CIRCUITO 3: REPORTAR AMEAÇA
+// ==========================================
+
+export circuit reportThreat(
+  public victimId: Bytes<32>,
+  public suspectId: Bytes<32>,
+  public platformId: Bytes<16>,
+  public threatLevel: Uint8
+): ThreatReport {
+  
+  // Gerar ID único do report
+  const reportId = hashThreat(victimId, suspectId, getCurrentTimestamp());
+  
+  // Incrementar contador de ameaças bloqueadas
+  State.totalThreatsBlocked = State.totalThreatsBlocked + 1;
+  
+  // Se ameaça crítica (nível >= 7), disparar alerta
+  if (threatLevel >= 7) {
+    triggerCriticalAlert(victimId, suspectId, threatLevel);
+  }
+  
+  // Adicionar suspeito à blacklist global
+  addToGlobalBlacklist(suspectId, platformId);
+  
+  // Criar registro do incidente
+  return {
+    reportId: reportId,
+    victimId: victimId,
+    suspectId: suspectId,
+    threatLevel: threatLevel,
+    platformId: platformId,
+    timestamp: getCurrentTimestamp()
+  };
+}
+
+// ==========================================
+// CIRCUITO 4: OBTER ESTATÍSTICAS
+// ==========================================
+
+export circuit getStatistics(): State {
+  return {
+    totalChildrenRegistered: State.totalChildrenRegistered,
+    totalVerifications: State.totalVerifications,
+    totalThreatsBlocked: State.totalThreatsBlocked,
+    contractActive: State.contractActive
+  };
+}
+
+// ==========================================
+// FUNÇÕES AUXILIARES (Private)
+// ==========================================
+
+function getCurrentTimestamp(): Uint64 {
+  // Em produção, seria obtido do bloco
+  return 1701532800; // Timestamp fixo para exemplo
+}
+
+function hashData(data1: Bytes<32>, data2: Bytes<64>, data3: Uint64): Bytes<32> {
+  // Combinar dados e criar hash
+  // Em produção, usaria função de hash real da Midnight
+  return data1; // Simplificado
+}
+
+function createAgeProof(age: Uint16): Bytes<32> {
+  // Criar prova de faixa etária
+  // 1 = 5-7 anos, 2 = 8-12 anos, 3 = 13-17 anos
+  const range = calculateAgeRange(age);
+  
+  // Gerar hash da faixa (não revela idade exata)
+  return hashRange(range);
+}
+
+function calculateAgeRange(age: Uint16): Uint8 {
+  if (age <= 7) return 1;
+  if (age <= 12) return 2;
+  return 3;
+}
+
+function hashRange(range: Uint8): Bytes<32> {
+  // Simplificado - em produção seria hash real
+  const dummy: Bytes<32> = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,range];
+  return dummy;
+}
+
+function checkChildExists(childId: Bytes<32>): Boolean {
+  // Verificar se criança está registrada
+  // Em produção, consultaria storage
+  return true; // Simplificado
+}
+
+function getAgeRange(childId: Bytes<32>): Uint8 {
+  // Obter faixa etária da criança
+  return 2; // 8-12 anos (simplificado)
+}
+
+function logVerification(childId: Bytes<32>, platformId: Bytes<16>): Void {
+  // Registrar evento de verificação
+  // Em produção, emitiria evento
+}
+
+function hashThreat(victim: Bytes<32>, suspect: Bytes<32>, time: Uint64): Bytes<32> {
+  // Gerar hash único para o report
+  return victim; // Simplificado
+}
+
+function triggerCriticalAlert(victim: Bytes<32>, suspect: Bytes<32>, level: Uint8): Void {
+  // Emitir evento crítico para notificar pais
+  // Em produção, emitiria evento que seria capturado off-chain
+}
+
+function addToGlobalBlacklist(suspect: Bytes<32>, platform: Bytes<16>): Void {
+  // Adicionar suspeito à blacklist cross-platform
+  // Em produção, registraria no storage
+}
+
+function createInvalidRecord(): ChildRecord {
+  const zero: Bytes<32> = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+  return {
+    childId: zero,
+    ageProofHash: zero,
+    parentId: zero,
+    registrationTimestamp: 0,
+    isActive: false
+  };
+}
+
+function createFailedVerification(): VerificationResult {
+  return {
+    isVerified: false,
+    ageRange: 0,
+    timestamp: getCurrentTimestamp()
+  };
+}

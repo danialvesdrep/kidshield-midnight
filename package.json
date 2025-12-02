@@ -1,0 +1,32 @@
+{
+  "name": "kidshield-midnight",
+  "version": "1.0.0",
+  "description": "KidShield - Child Protection Protocol on Midnight Network",
+  "main": "dist/api/src/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node api/src/index.ts",
+    "start": "node dist/api/src/index.js",
+    "test": "echo \"Tests coming soon\" && exit 0"
+  },
+  "keywords": [
+    "midnight",
+    "blockchain",
+    "zero-knowledge",
+    "child-protection",
+    "privacy"
+  ],
+  "author": "KidShield Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.6"
+  }
+}
