@@ -275,12 +275,12 @@ yarn test
 - Integração com Proof Server
 - Lace Wallet integration
 
-### 📅 Fase 3: MVP (Q1 2025)
+### 📅 Fase 3: MVP (Q1 2026)
 - SDK JavaScript/TypeScript
 - Documentação completa
 - Primeiros parceiros pilotos
 
-### 📅 Fase 4: Mainnet (Q2 2025)
+### 📅 Fase 4: Mainnet (Q2 2026)
 - Deploy em produção
 - Certificação COPPA/GDPR
 - Programa de desenvolvedores
